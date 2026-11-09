@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BookHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Poppins','system-ui','sans-serif']},colors:{cream:'var(--bg)',card:'var(--card)',forest:'var(--green)',ink:'var(--ink)',line:'var(--line)',accent:'#FF7A00'}}}}</script>
+<style>
+:root{--bg:#FFF8F0;--card:#FFFFFF;--green:#1A3A2F;--ink:#1A3A2F;--line:#E6DCCB;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1B16;--card:#172A22;--green:#1F4A3B;--ink:#F3EBDD;--line:#2A4237;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1B16;--card:#172A22;--green:#1F4A3B;--ink:#F3EBDD;--line:#2A4237;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:Poppins,system-ui,sans-serif}
+input,select,textarea{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:.75rem;padding:.55rem .8rem;width:100%}
+input:disabled{background:transparent;border-color:transparent;padding-left:0}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid #FF7A00;outline-offset:1px}
+input[type=range]{padding:0;accent-color:#FF7A00}
+.btn{padding:.6rem 1.3rem;border-radius:999px;font-weight:500;transition:opacity .15s}.btn:hover{opacity:.88}
+.bp{background:#FF7A00;color:#fff}.bd{background:var(--green);color:#fff}.bo{border:1.5px solid var(--ink)}
+.bg{border-radius:999px;font-size:.7rem;font-weight:600;padding:.15rem .6rem;display:inline-block}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="min-h-screen">
+<header class="bg-forest text-white sticky z-30" style="top:env(safe-area-inset-top,0px)">
+<div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2" id="nav"></div>
+</header>
+<main id="app" class="max-w-6xl mx-auto px-4 py-6"></main>
+<div id="modal"></div>
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-6 bg-forest text-white px-5 py-2 rounded-full text-sm shadow-lg hidden z-50"></div>
+
+<script>
+const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
+const jp=(k,d)=>{try{return JSON.parse(ls(k))||d}catch(e){return d}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CATS=['Fiction','Science','History','Education','Business','Children'];
+const COL={Fiction:'#8B4A2B',Science:'#1F6F8B',History:'#7A5C2E',Education:'#2F7D4F',Business:'#1A3A2F',Children:'#D9822B'};
+const CC={'New':'bg-emerald-100 text-emerald-900','Like New':'bg-green-100 text-green-800','Very Good':'bg-blue-100 text-blue-800','Good':'bg-yellow-100 text-yellow-800','Acceptable':'bg-orange-100 text-orange-800'};
+const RAW=[
+['The Silent Orchard','Elena Marsh','Fiction',12.99,'Physical','New','Maple Books',4.8],
+['Atlas of Small Stars','Dr. Omar Hale','Science',24.5,'Physical','New','Orbit Reads',4.7],
+['Rivers of Empire','Nadia Karim','History',18,'Digital','','PageTurner',4.5],
+['Mastering Algebra','Prof. Lina Brooks','Education',9.99,'Digital','','StudyHub',4.6],
+['The Lean Founder','Marcus Reed','Business',15.75,'Physical','Like New','Sam’s Shelf',4.9],
+['Pip and the Moon Fox','Clara Dunn','Children',8.5,'Physical','New','Maple Books',4.9],
+['Letters from Alexandria','Yusuf Amin','Fiction',7.25,'Physical','Very Good','Old Town Books',4.3],
+['Quantum Kitchen','Dr. Ava Lin','Science',29,'Digital','','PageTurner',4.4],
+['Empires of Salt','Ben Okoro','History',11,'Physical','Good','Sam’s Shelf',4.2],
+['Think in Systems','Rita Vogel','Business',19.99,'Digital','','StudyHub',4.6],
+['The Glass Lighthouse','Hannah Cole','Fiction',6,'Physical','Acceptable','Old Town Books',3.9],
+['Biology Made Simple','Dr. Sami Fahd','Education',22,'Physical','New','Orbit Reads',4.5],
+['Counting with Owls','Tess Moreau','Children',5.5,'Physical','Like New','Maple Books',4.8],
+['Deep Ocean Diaries','Kai Mendes','Science',14.25,'Physical','Very Good','Sam’s Shelf',4.6],
+['A Short History of Trade','Leila Najm','History',16.4,'Digital','','PageTurner',4.7],
+['Pricing for Profit','Omar Fathy','Business',27.9,'Physical','New','Orbit Reads',4.4],
+['Grammar Gym','Joan Pike','Education',4.99,'Digital','','StudyHub',4.1],
+['The Paper Kingdom','Noor Said','Fiction',9.2,'Physical','Good','Old Town Books',4.5]
+].map((r,i)=>({id:i+1,title:r[0],author:r[1],cat:r[2],price:r[3],fmt:r[4],cond:r[5],seller:r[6],rating:r[7],
+ desc:`${r[0]} by ${r[1]} is a popular ${r[2].toLowerCase()} title. A thoughtful, well-paced read that readers keep coming back to, now available on BookHub.`}));
+const books=[...RAW,...jp('bh_sold',[])];
+const used=b=>b.fmt==='Physical'&&b.cond!=='New';
+const DEMO={Buyer:{name:'Sara Buyer',email:'buyer@bookhub.com',role:'Buyer',phone:'+20 100 000 0001',address:'12 Nile St, Cairo'},
+Seller:{name:'Sam Seller',email:'seller@bookhub.com',role:'Seller',phone:'+20 100 000 0002',address:'5 Garden City, Cairo'},
+Admin:{name:'Alex Admin',email:'admin@bookhub.com',role:'Admin',phone:'+20 100 000 0003',address:'BookHub HQ, Cairo'}};
+
+let view='home',sel=null,flow={tx:null,fmt:null,cond:null},cart=jp('bh_cart',[]),user=jp('bh_user',null),editing=false,authTab='login';
+let f={q:'',cat:[],max:100,fmt:'All',cond:'All',sort:'new'};
+const save=()=>{ls('bh_cart',JSON.stringify(cart));ls('bh_user',JSON.stringify(user))};
+const toast=m=>{const t=document.getElementById('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),2200)};
+
+function cover(b){
+ const w=b.title.split(' '),L=[];let c='';
+ w.forEach(x=>{if((c+' '+x).trim().length>14){L.push(c);c=x}else c=(c+' '+x).trim()});L.push(c);
+ const t=L.slice(0,4).map((l,i)=>`<text x='150' y='${150+i*34}' text-anchor='middle' font-family='Georgia,serif' font-size='28' fill='#fff'>${esc(l)}</text>`).join('');
+ const s=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${COL[b.cat]}'/><stop offset='1' stop-color='#1a1a1a'/></linearGradient></defs><rect width='300' height='400' fill='url(#g)'/><rect x='20' y='20' width='260' height='360' fill='none' stroke='#fff' stroke-opacity='.45'/>${t}<text x='150' y='350' text-anchor='middle' font-family='Arial,sans-serif' font-size='15' fill='#fff' fill-opacity='.85'>${esc(b.author)}</text></svg>`;
+ return 'data:image/svg+xml,'+encodeURIComponent(s);
+}
+const badges=b=>`<span class="bg ${b.fmt==='Digital'?'bg-violet-100 text-violet-800':'bg-slate-100 text-slate-800'}">${b.fmt}</span>`+(b.fmt==='Physical'?` <span class="bg ${CC[b.cond]}">${b.cond}</span>`:'');
+const card=b=>`<button onclick="go('details',${b.id})" class="text-left bg-card border border-line rounded-2xl overflow-hidden hover:-translate-y-0.5 transition">
+ <img src="${cover(b)}" alt="Cover of ${esc(b.title)}" class="w-full aspect-[3/4] object-cover" loading="lazy">
+ <div class="p-3"><div class="font-semibold leading-snug">${esc(b.title)}</div><div class="text-sm opacity-70">${esc(b.author)}</div>
+ <div class="flex items-center justify-between mt-2"><span class="font-semibold text-accent">$${b.price.toFixed(2)}</span><span class="text-xs">${badges(b)}</span></div></div></button>`;
+
+function go(v,p){view=v;if(p!==undefined)sel=p;editing=false;render();scrollTo(0,0)}
+function start(tx){flow={tx,fmt:null,cond:null};go('format')}
+function pickFmt(x){flow.fmt=x;if(x==='Digital')finish();else go('cond')}
+function pickCond(x){flow.cond=x;finish()}
+function finish(){
+ if(flow.tx==='sell'){go('sell');return}
+ f={q:'',cat:[],max:100,fmt:flow.fmt,cond:flow.cond==='New'?'New':flow.cond?'Secondhand':'All',sort:'new'};go('browse')
+}
+function openBrowse(){flow={tx:'buy',fmt:null,cond:null};f={q:'',cat:[],max:100,fmt:'All',cond:'All',sort:'new'};go('browse')}
+
+function renderNav(){
+ const n=cart.length,a=(l,fn)=>`<button onclick="${fn}" class="hover:text-accent ${l==='x'?'':''}">${l}</button>`;
+ document.getElementById('nav').innerHTML=`<button onclick="go('home')" class="text-xl font-bold tracking-tight mr-2">Book<span class="text-accent">Hub</span></button>
+ <nav class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm flex-1">${a('Home',"go('home')")}${a('Browse','openBrowse()')}${a('Sell',"start('sell')")}
+ <button onclick="go('cart')" class="hover:text-accent">Cart <span class="bg-accent text-white rounded-full px-2 text-xs">${n}</span></button></nav>
+ <div class="flex items-center gap-3 text-sm">${user?`<button onclick="go('profile')" class="hover:text-accent">Profile (${esc(user.name.split(' ')[0])})</button><button onclick="logout()" class="opacity-80 hover:text-accent">Log out</button>`:`<button onclick="authModal('login')" class="hover:text-accent">Login</button><button onclick="go('profile')" class="hover:text-accent">Profile</button>`}</div>`;
+}
+function crumbs(items){return `<nav class="text-sm opacity-80 mb-5 flex flex-wrap gap-1">${items.map((c,i)=>i<items.length-1?`<button class="underline" onclick="${c[1]}">${c[0]}</button><span>›</span>`:`<span class="font-medium">${c[0]}</span>`).join(' ')}</nav>`}
+function flowCrumbs(){
+ const t=flow.tx==='sell'?'Sell':'Buy',r=[['Home',"go('home')"]];
+ r.push([t,"go('format')"]);if(flow.fmt)r.push([flow.fmt,flow.fmt==='Physical'?"go('cond')":"go('browse')"]);if(flow.cond)r.push([flow.cond,"go('browse')"]);
+ r[r.length-1][1]='';return crumbs(r);
+}
+
+const V={
+home(){return `<section class="rounded-3xl bg-forest text-white p-8 md:p-14 mb-8">
+ <h1 class="text-3xl md:text-5xl font-bold leading-tight max-w-xl">Buy &amp; Sell Books Easily</h1>
+ <p class="mt-3 opacity-85 max-w-md">New, secondhand and digital books from readers and sellers you can trust.</p></section>
+ <div class="grid md:grid-cols-2 gap-5 mb-10">
+ <button onclick="start('buy')" class="text-left bg-card border border-line rounded-3xl p-7 hover:border-accent transition"><div class="text-2xl font-semibold">Buy Books</div><p class="opacity-70 mt-1 mb-4">Find your next read at a fair price.</p><span class="btn bp inline-block">Start buying</span></button>
+ <button onclick="start('sell')" class="text-left bg-card border border-line rounded-3xl p-7 hover:border-accent transition"><div class="text-2xl font-semibold">Sell Books</div><p class="opacity-70 mt-1 mb-4">Give your books a second life.</p><span class="btn bd inline-block">Start selling</span></button></div>
+ <h2 class="text-xl font-semibold mb-4">Featured books</h2><div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">${books.slice(0,6).map(card).join('')}</div>`},
+format(){return flowCrumbs()+`<h2 class="text-2xl font-semibold mb-5">Choose a format</h2><div class="grid sm:grid-cols-2 gap-5">
+ ${[['Physical','Printed books, shipped to you'],['Digital','Instant download, read anywhere']].map(x=>`<button onclick="pickFmt('${x[0]}')" class="text-left bg-card border border-line rounded-3xl p-7 hover:border-accent"><div class="text-xl font-semibold">${x[0]} Books</div><p class="opacity-70">${x[1]}</p></button>`).join('')}</div>`},
+cond(){return flowCrumbs()+`<h2 class="text-2xl font-semibold mb-5">Choose a condition</h2><div class="grid sm:grid-cols-2 gap-5">
+ ${[['New','Never read, in original condition'],['Secondhand','Pre-owned at a lower price']].map(x=>`<button onclick="pickCond('${x[0]}')" class="text-left bg-card border border-line rounded-3xl p-7 hover:border-accent"><div class="text-xl font-semibold">${x[0]} Books</div><p class="opacity-70">${x[1]}</p></button>`).join('')}</div>`},
+browse(){const cr=flow.tx?flowCrumbs():crumbs([['Home',"go('home')"],['Browse','']]);
+ const op=(a,v)=>a.map(x=>`<option ${x==v?'selected':''}>${x}</option>`).join('');
+ return cr+`<input id="q" type="search" placeholder="Search by title, author or keyword" value="${esc(f.q)}" oninput="f.q=this.value;grid()" class="mb-5 !rounded-full">
+ <div class="grid md:grid-cols-[220px_1fr] gap-6"><aside class="bg-card border border-line rounded-2xl p-4 h-fit space-y-4 text-sm">
+ <div><div class="font-semibold mb-2">Category</div>${CATS.map(c=>`<label class="flex gap-2 items-center py-0.5"><input type="checkbox" class="!w-auto" ${f.cat.includes(c)?'checked':''} onchange="tc('${c}')">${c}</label>`).join('')}</div>
+ <div><div class="font-semibold mb-2">Price up to $<span id="pv">${f.max}</span></div><input type="range" min="0" max="100" value="${f.max}" oninput="f.max=+this.value;document.getElementById('pv').textContent=this.value;grid()"></div>
+ <div><div class="font-semibold mb-2">Format</div><select onchange="f.fmt=this.value;grid()">${op(['All','Physical','Digital'],f.fmt)}</select></div>
+ <div><div class="font-semibold mb-2">Condition</div><select onchange="f.cond=this.value;grid()">${op(['All','New','Secondhand'],f.cond)}</select></div>
+ <div><div class="font-semibold mb-2">Sort</div><select onchange="f.sort=this.value;grid()"><option value="new" ${f.sort=='new'?'selected':''}>Newest</option><option value="lo" ${f.sort=='lo'?'selected':''}>Price: Low to High</option><option value="hi" ${f.sort=='hi'?'selected':''}>Price: High to Low</option></select></div>
+ </aside><div><div id="cnt" class="text-sm opacity-70 mb-3"></div><div id="grid" class="grid grid-cols-2 lg:grid-cols-3 gap-4"></div></div></div>`},
+details(){const b=books.find(x=>x.id===sel);if(!b)return '';
+ return crumbs([['Home',"go('home')"],['Browse',"go('browse')"],[esc(b.title),'']])+`<div class="grid md:grid-cols-2 gap-8"><img src="${cover(b)}" alt="Cover of ${esc(b.title)}" class="w-full max-w-sm mx-auto rounded-2xl border border-line">
+ <div><div class="mb-2">${badges(b)}</div><h1 class="text-3xl font-bold">${esc(b.title)}</h1><p class="opacity-75 mb-4">by ${esc(b.author)}</p>
+ <p class="mb-5 leading-relaxed">${esc(b.desc)}</p><div class="text-3xl font-bold text-accent mb-4">$${b.price.toFixed(2)}</div>
+ <dl class="grid grid-cols-[120px_1fr] gap-y-2 text-sm mb-6"><dt class="opacity-60">Availability</dt><dd class="text-green-600 font-medium">In Stock</dd><dt class="opacity-60">Seller</dt><dd>${esc(b.seller)} · ★ ${b.rating}</dd><dt class="opacity-60">Category</dt><dd>${b.cat}</dd><dt class="opacity-60">Format</dt><dd>${b.fmt}</dd>${b.fmt==='Physical'?`<dt class="opacity-60">Condition</dt><dd><span class="bg ${CC[b.cond]}">${b.cond}</span></dd>`:''}</dl>
+ <div class="flex gap-3 flex-wrap"><button class="btn bp" onclick="add(${b.id})">Add to Cart</button><button class="btn bo" onclick="go('browse')">Back to Browse</button></div></div></div>`},
+cart(){
+ if(!cart.length)return `<h2 class="text-2xl font-semibold mb-3">Your cart</h2><p class="opacity-70 mb-4">Your cart is empty. Find a book to get started.</p><button class="btn bp" onclick="openBrowse()">Browse books</button>`;
+ const rows=cart.map(c=>{const b=books.find(x=>x.id===c.id),lock=b.fmt==='Digital'||used(b);
+ return `<div class="bg-card border border-line rounded-2xl p-3 flex gap-3 items-center"><img src="${cover(b)}" alt="" class="w-16 rounded-lg"><div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(b.title)}</div><div class="text-xs mb-1">${badges(b)}</div><div class="text-sm text-accent font-semibold">$${b.price.toFixed(2)}</div></div>
+ <div class="flex items-center gap-2">${lock?`<span class="text-xs opacity-60">Qty 1 (locked)</span>`:`<button class="btn bo !px-3 !py-1" onclick="qty(${b.id},-1)" aria-label="Decrease">−</button><span class="w-5 text-center">${c.qty}</span><button class="btn bo !px-3 !py-1" onclick="qty(${b.id},1)" aria-label="Increase">+</button>`}</div>
+ <button class="text-sm underline text-red-600" onclick="rm(${b.id})">Remove</button></div>`}).join('');
+ const sub=tot().sub,ship=tot().ship;
+ return `<h2 class="text-2xl font-semibold mb-4">Your cart</h2><div class="grid md:grid-cols-[1fr_300px] gap-6 items-start"><div class="space-y-3">${rows}</div>
+ <div class="bg-card border border-line rounded-2xl p-5 space-y-2"><div class="flex justify-between"><span>Subtotal</span><span>$${sub.toFixed(2)}</span></div><div class="flex justify-between"><span>Shipping</span><span>${ship?'$'+ship.toFixed(2):'Free'}</span></div>
+ <div class="flex justify-between font-bold text-lg border-t border-line pt-2"><span>Total</span><span>$${(sub+ship).toFixed(2)}</span></div><button class="btn bp w-full mt-3" onclick="checkout()">Checkout</button></div></div>`},
+done(){return `<div class="text-center py-16"><h2 class="text-2xl font-semibold mb-2">Order placed</h2><p class="opacity-70 mb-5">This is a demo, so no payment was taken.</p><button class="btn bp" onclick="openBrowse()">Keep browsing</button></div>`},
+sell(){return flowCrumbs()+`<h2 class="text-2xl font-semibold mb-5">List your book</h2><div class="bg-card border border-line rounded-2xl p-5 grid sm:grid-cols-2 gap-4 max-w-2xl">
+ <label>Title<input id="s_t"></label><label>Author<input id="s_a"></label>
+ <label>Category<select id="s_c">${CATS.map(c=>`<option>${c}</option>`).join('')}</select></label><label>Price ($)<input id="s_p" type="number" min="1" max="100" step="0.01"></label>
+ <label>Format<select id="s_f"><option ${flow.fmt=='Physical'?'selected':''}>Physical</option><option ${flow.fmt=='Digital'?'selected':''}>Digital</option></select></label>
+ <label>Condition<select id="s_n">${['New','Like New','Very Good','Good','Acceptable'].map(c=>`<option ${(flow.cond=='New'&&c=='New')?'selected':''}>${c}</option>`).join('')}</select></label>
+ <label class="sm:col-span-2">Description<textarea id="s_d" rows="3"></textarea></label><button class="btn bp sm:col-span-2" onclick="list()">Publish listing</button></div>`},
+profile(){if(!user)return `<p class="mb-4">Log in to see your profile.</p><button class="btn bp" onclick="authModal('login')">Login</button>`;
+ const d=editing?'':'disabled',fl=(l,k)=>`<label class="block text-sm">${l}<input id="p_${k}" value="${esc(user[k]||'')}" ${d}></label>`;
+ return `<h2 class="text-2xl font-semibold mb-5">Your profile</h2><div class="bg-card border border-line rounded-2xl p-6 max-w-xl"><div class="flex items-center gap-4 mb-5"><div class="w-16 h-16 rounded-full bg-accent text-white grid place-items-center text-2xl font-semibold">${esc(user.name[0].toUpperCase())}</div><div><div class="font-semibold">${esc(user.name)}</div><span class="bg bg-slate-100 text-slate-800">${user.role}</span></div></div>
+ <div class="space-y-3">${fl('Name','name')}${fl('Email','email')}${fl('Phone','phone')}${fl('Address','address')}</div>
+ <div class="mt-5 flex gap-3">${editing?`<button class="btn bp" onclick="saveProf()">Save</button><button class="btn bo" onclick="editing=false;render()">Cancel</button>`:`<button class="btn bd" onclick="editing=true;render()">Edit</button>`}</div></div>`}
+};
+
+function filt(){const q=f.q.toLowerCase().trim();
+ let r=books.filter(b=>(!q||(b.title+' '+b.author+' '+b.cat+' '+b.desc).toLowerCase().includes(q))&&(!f.cat.length||f.cat.includes(b.cat))&&b.price<=f.max&&(f.fmt==='All'||b.fmt===f.fmt)&&(b.fmt==='Digital'||f.cond==='All'||(f.cond==='New')===(b.cond==='New')));
+ return f.sort==='lo'?r.sort((a,b)=>a.price-b.price):f.sort==='hi'?r.sort((a,b)=>b.price-a.price):r.sort((a,b)=>b.id-a.id)}
+function grid(){const r=filt();document.getElementById('cnt').textContent=r.length+' books found';
+ document.getElementById('grid').innerHTML=r.length?r.map(card).join(''):'<p class="col-span-full opacity-70">No books match these filters. Try widening the price range or clearing a category.</p>'}
+function tc(c){f.cat=f.cat.includes(c)?f.cat.filter(x=>x!==c):[...f.cat,c];grid()}
+function tot(){let sub=0,ph=false;cart.forEach(c=>{const b=books.find(x=>x.id===c.id);sub+=b.price*c.qty;if(b.fmt==='Physical')ph=true});return{sub,ship:ph?4.99:0}}
+function add(id){const b=books.find(x=>x.id===id),e=cart.find(c=>c.id===id);
+ if(e){if(b.fmt==='Digital'||used(b)){toast('Already in your cart (1 copy only)');return}e.qty++}else cart.push({id,qty:1});save();renderNav();toast('Added to cart')}
+function qty(id,d){const c=cart.find(x=>x.id===id);c.qty=Math.max(1,Math.min(10,c.qty+d));save();render()}
+function rm(id){cart=cart.filter(c=>c.id!==id);save();render()}
+function checkout(){if(!user){toast('Please log in to check out');authModal('login');return}cart=[];save();go('done')}
+function list(){if(!user){toast('Log in to publish a listing');authModal('login');return}
+ const g=i=>document.getElementById(i).value.trim(),p=parseFloat(g('s_p'));
+ if(!g('s_t')||!g('s_a')||!(p>0)){toast('Add a title, author and price');return}
+ const fm=g('s_f'),b={id:Date.now(),title:g('s_t'),author:g('s_a'),cat:g('s_c'),price:p,fmt:fm,cond:fm==='Digital'?'':g('s_n'),seller:user.name,rating:5,desc:g('s_d')||'A newly listed book on BookHub.'};
+ books.unshift(b);const s=jp('bh_sold',[]);s.unshift(b);ls('bh_sold',JSON.stringify(s));toast('Listing published');openBrowse()}
+function saveProf(){['name','email','phone','address'].forEach(k=>user[k]=document.getElementById('p_'+k).value.trim()||user[k]);save();editing=false;render();toast('Profile saved')}
+function logout(){user=null;save();go('home');toast('Logged out')}
+function setUser(u){user=u;save();closeM();render();toast('Welcome, '+u.name.split(' ')[0])}
+function closeM(){document.getElementById('modal').innerHTML=''}
+function authModal(t){authTab=t;const L=t==='login',tab=(k,l)=>`<button onclick="authModal('${k}')" class="flex-1 py-2 font-semibold ${authTab===k?'border-b-2 border-accent':'opacity-60'}">${l}</button>`;
+ document.getElementById('modal').innerHTML=`<div class="fixed inset-0 bg-black/50 z-40 grid place-items-center p-4" onclick="if(event.target===this)closeM()"><div class="bg-card text-ink rounded-3xl p-6 w-full max-w-sm max-h-full overflow-auto">
+ <div class="flex mb-4">${tab('login','Login')}${tab('register','Register')}</div>
+ ${L?`<div class="space-y-3"><input id="a_e" type="email" placeholder="Email"><input id="a_p" type="password" placeholder="Password"><button class="btn bp w-full" onclick="doLogin()">Login</button></div>
+ <div class="text-xs opacity-60 text-center my-3">or try a demo account</div><div class="grid grid-cols-3 gap-2">${Object.keys(DEMO).map(k=>`<button class="btn bo !px-2 text-xs" onclick="setUser(DEMO.${k})">${k}</button>`).join('')}</div>`
+ :`<div class="space-y-3"><input id="r_n" placeholder="Full name"><input id="r_e" type="email" placeholder="Email"><input id="r_p" type="password" placeholder="Password"><input id="r_c" type="password" placeholder="Confirm password"><div id="r_err" class="text-sm text-red-600"></div><button class="btn bp w-full" onclick="doReg()">Create account</button></div>`}
+ </div></div>`}
+function doLogin(){const e=document.getElementById('a_e').value.trim(),p=document.getElementById('a_p').value;
+ if(!e||!p){toast('Enter your email and password');return}setUser({name:e.split('@')[0],email:e,role:'Buyer',phone:'',address:''})}
+function doReg(){const v=i=>document.getElementById(i).value.trim(),er=m=>document.getElementById('r_err').textContent=m;
+ if(!v('r_n')||!v('r_e'))return er('Enter your name and email.');if(v('r_p').length<6)return er('Password needs at least 6 characters.');
+ if(v('r_p')!==v('r_c'))return er('Passwords do not match.');setUser({name:v('r_n'),email:v('r_e'),role:'Buyer',phone:'',address:''})}
+
+function render(){renderNav();document.getElementById('app').innerHTML=V[view]();if(view==='browse')grid()}
+render();
+</script>
+</body>
+</html>
